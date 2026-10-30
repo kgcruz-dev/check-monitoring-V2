@@ -1,0 +1,3114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Create Batch Check Form</title>
+
+    <!-- PDF.JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!-- TESSERACT OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 35px 20px;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #082d6c;
+            color: #10264a;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 32px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.18);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+            color: #10264a;
+        }
+
+        .subtitle {
+            color: #718096;
+            margin-top: 7px;
+            margin-bottom: 28px;
+        }
+
+        .top-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: 600;
+        }
+
+        .required {
+            color: #718096;
+            font-size: 12px;
+            font-weight: normal;
+        }
+
+        input,
+        select {
+            width: 100%;
+            height: 46px;
+            border: 1px solid #cbd5e0;
+            border-radius: 7px;
+            padding: 0 12px;
+            background: white;
+            font-size: 15px;
+            outline: none;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #1295ef;
+            box-shadow: 0 0 0 3px rgba(18,149,239,.10);
+        }
+
+
+        /* =============================================
+           SOA UPLOAD
+        ============================================= */
+
+        .upload-section {
+            margin-top: 10px;
+            margin-bottom: 28px;
+        }
+
+        .upload-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #1295ef;
+            background: #f4faff;
+            border-radius: 12px;
+            padding: 35px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            background: #e7f5ff;
+            border-color: #087ecf;
+        }
+
+        .drop-icon {
+            font-size: 38px;
+            margin-bottom: 10px;
+        }
+
+        .drop-main {
+            font-size: 17px;
+            font-weight: bold;
+            color: #10264a;
+        }
+
+        .drop-sub {
+            margin-top: 8px;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .browse-btn {
+            display: inline-block;
+            margin-top: 14px;
+            background: #1295ef;
+            color: white;
+            padding: 9px 18px;
+            border-radius: 7px;
+            font-weight: bold;
+        }
+
+
+        /* =============================================
+           OCR STATUS
+        ============================================= */
+
+        #ocrPanel {
+            display: none;
+            margin-top: 15px;
+            padding: 16px;
+            border-radius: 8px;
+            background: #eef6fc;
+            border: 1px solid #cce4f6;
+        }
+
+        #ocrFileName {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        #ocrText {
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .ocr-progress-track {
+            width: 100%;
+            height: 10px;
+            background: #dce3eb;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        #ocrProgressBar {
+            width: 0%;
+            height: 100%;
+            background: #1295ef;
+            transition: .2s;
+        }
+
+        #ocrResult {
+            display: none;
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 8px;
+            background: #e7f7ec;
+            border: 1px solid #8fd3a4;
+            color: #176a35;
+        }
+
+
+        /* =============================================
+           CHECK CARDS
+        ============================================= */
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 12px;
+            margin-top: 28px;
+            margin-bottom: 15px;
+        }
+
+        .section-header h2 {
+            margin: 0;
+            font-size: 21px;
+        }
+
+        .check-card {
+            border: 1px solid #dce3ed;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f9fbfd;
+            margin-bottom: 18px;
+        }
+
+        .check-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 13px 18px;
+            background: #edf4fb;
+        }
+
+        .check-title {
+            font-weight: bold;
+        }
+
+        .check-content {
+            padding: 20px;
+        }
+
+        .check-grid {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            gap: 16px;
+        }
+
+        .remove-btn {
+            border: 0;
+            background: #dc3545;
+            color: white;
+            border-radius: 6px;
+            padding: 8px 13px;
+            cursor: pointer;
+        }
+
+        .add-btn {
+            width: 100%;
+            height: 48px;
+            border: 2px dashed #1295ef;
+            border-radius: 8px;
+            background: #f3faff;
+            color: #087ecf;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .add-btn:hover {
+            background: #e8f5ff;
+        }
+
+
+        /* =============================================
+           SUMMARY
+        ============================================= */
+
+        .summary {
+            margin-top: 24px;
+            padding: 20px;
+            background: #eef6fc;
+            border: 1px solid #d7e9f7;
+            border-radius: 9px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 7px 0;
+        }
+
+        .summary-value {
+            font-weight: bold;
+        }
+
+        .submit-btn {
+            width: 100%;
+            height: 54px;
+            margin-top: 22px;
+            border: 0;
+            border-radius: 8px;
+            background: #1295ef;
+            color: white;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .submit-btn:hover {
+            background: #087fcf;
+        }
+
+        .submit-btn:disabled {
+            background: #92b7d2;
+        }
+
+
+        /* =============================================
+           MONDAY PROGRESS
+        ============================================= */
+
+        #progressArea {
+            display: none;
+            margin-top: 22px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 14px;
+            background: #dce3eb;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            width: 0%;
+            height: 100%;
+            background: #1295ef;
+            transition: .25s;
+        }
+
+        #progressText {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        #resultBox {
+            display: none;
+            margin-top: 20px;
+            padding: 18px;
+            border-radius: 8px;
+        }
+
+        .success {
+            background: #e7f7ec;
+            border: 1px solid #8fd3a4;
+            color: #176a35;
+        }
+
+        .error {
+            background: #fdebed;
+            border: 1px solid #e6a0a7;
+            color: #922934;
+        }
+
+        @media(max-width:900px) {
+            .check-grid,
+            .top-grid {
+                grid-template-columns: repeat(2,1fr);
+            }
+        }
+
+        @media(max-width:650px) {
+            body {
+                padding: 15px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .check-grid,
+            .top-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+
+    <h1>Create Batch Check Form</h1>
+
+    <div class="subtitle">
+        Upload an SOA or encode checks manually
+    </div>
+
+
+    <!-- =============================================
+         CLIENT / DEFAULT FUND SOURCE
+    ============================================== -->
+
+    <div class="top-grid">
+
+        <div class="form-group">
+
+            <label>
+                Account Name
+                <span class="required">(required)</span>
+            </label>
+
+            <input
+                id="accountName"
+                type="text"
+                placeholder="E.G Kian Cruz"
+            >
+
+        </div>
+
+
+        <div class="form-group">
+
+            <label>
+                Default Fund Source
+            </label>
+
+            <select
+                id="defaultFundSource"
+                onchange="applyFundSourceToAll()"
+            >
+
+                <option value="">
+                    Select Fund Source
+                </option>
+
+                <option value="In House">
+                    In House
+                </option>
+
+                <option value="Retail">
+                    Retail
+                </option>
+
+                <option value="Declared">
+                    Declared
+                </option>
+
+            </select>
+
+        </div>
+
+    </div>
+
+
+    <!-- =============================================
+         SOA DROP AREA
+    ============================================== -->
+
+    <div class="upload-section">
+
+        <div class="upload-title">
+            Import from SOA
+        </div>
+
+        <div
+            id="dropZone"
+            class="drop-zone"
+        >
+
+            <div class="drop-icon">
+                📄
+            </div>
+
+            <div class="drop-main">
+                Drop SOA PDF / JPG / PNG Here
+            </div>
+
+            <div class="drop-sub">
+                The form will scan the document and populate the checks automatically.
+            </div>
+
+            <div class="browse-btn">
+                Browse File
+            </div>
+
+        </div>
+
+
+        <input
+            id="fileInput"
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf"
+        >
+
+
+        <div id="ocrPanel">
+
+            <div id="ocrFileName"></div>
+
+            <div id="ocrText">
+                Preparing document...
+            </div>
+
+            <div class="ocr-progress-track">
+
+                <div id="ocrProgressBar"></div>
+
+            </div>
+
+        </div>
+
+
+        <div id="ocrResult"></div>
+
+    </div>
+
+
+    <!-- =============================================
+         CHECK SECTION
+    ============================================== -->
+
+    <div class="section-header">
+
+        <h2>
+            Checks
+        </h2>
+
+        <span id="checkCounterText">
+            0 Check(s)
+        </span>
+
+    </div>
+
+
+    <div id="checksContainer"></div>
+
+
+    <button
+        type="button"
+        class="add-btn"
+        onclick="addCheck()"
+    >
+        + ADD ANOTHER CHECK
+    </button>
+
+
+    <!-- =============================================
+         SUMMARY
+    ============================================== -->
+
+    <div class="summary">
+
+        <div class="summary-row">
+
+            <span>
+                Total Checks
+            </span>
+
+            <span
+                id="totalChecks"
+                class="summary-value"
+            >
+                0
+            </span>
+
+        </div>
+
+
+        <div class="summary-row">
+
+            <span>
+                Total Check Amount
+            </span>
+
+            <span
+                id="totalAmount"
+                class="summary-value"
+            >
+                ₱0.00
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- =============================================
+         SUBMIT
+    ============================================== -->
+
+    <button
+        id="submitButton"
+        class="submit-btn"
+        onclick="submitAllChecks()"
+    >
+        CREATE CHECKS IN MONDAY
+    </button>
+
+
+    <div id="progressArea">
+
+        <div class="progress-track">
+
+            <div id="progressBar"></div>
+
+        </div>
+
+        <div id="progressText">
+            Preparing...
+        </div>
+
+    </div>
+
+
+    <div id="resultBox"></div>
+
+</div>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   PDF.JS
+========================================================= */
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+
+/* =========================================================
+   MONDAY CONFIGURATION
+========================================================= */
+
+const MONDAY_TOKEN =
+    "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjY5ODI5NDM5MSwiYWFpIjoxMSwidWlkIjoxMTA1OTIwMDAsImlhZCI6IjIwMjYtMDgtMzBUMDA6MDA6MzMuMDAwWiIsInBlciI6Im1lOndyaXRlIiwiYWN0aWQiOjExNDM1NjAxLCJyZ24iOiJ1c2UxIn0.l_xP1amMfSBaQMl1c7f033mVqQPjxEZYYkfuEuRYSOU";
+
+
+const BOARD_ID =
+    "18433686802";
+
+
+const MONDAY_API =
+    "https://api.monday.com/v2";
+
+
+/* =========================================================
+   FUND SOURCE GROUP ROUTING
+========================================================= */
+
+const FUND_SOURCE_GROUPS = {
+
+    "In House":
+        "group_mm7wnnsr",
+
+    "Retail":
+        "group_mm7wb560",
+
+    "Declared":
+        "group_mm7wnjkp"
+
+};
+
+
+/* =========================================================
+   COLUMN IDS
+========================================================= */
+
+const COLUMN_IDS = {
+
+    BANK:
+        "status",
+
+    BRANCH:
+        "text5",
+
+    CHECK_DATE:
+        "date4",
+
+    CHECK_AMOUNT:
+        "numbers",
+
+    CHECK_NO:
+        "text6",
+
+    FUND_SOURCE:
+        "color_mm7wmbrf"
+
+};
+
+
+/* =========================================================
+   BANKS
+========================================================= */
+
+const BANKS = [
+
+    "ALL BANK",
+    "AUB",
+    "BANK OF MAKATI",
+    "BDO",
+    "BDO - NB",
+    "BOC",
+    "BPI",
+    "BPI FS",
+    "CB",
+    "CBS",
+    "CITYSTATE",
+    "CTBC",
+    "DBP",
+    "GM",
+    "LB",
+    "MAYBANK",
+    "MB",
+    "PBB",
+    "PBCOM",
+    "PENBANK",
+    "PHILTRUST",
+    "PNB",
+    "PSB",
+    "PSBC",
+    "RB",
+    "RCBC",
+    "SB",
+    "SBOA",
+    "UB",
+    "UCPB",
+    "VALLEY BANK",
+    "VB",
+    "WB"
+
+];
+
+
+/* =========================================================
+   FUND SOURCES
+========================================================= */
+
+const FUND_SOURCES = [
+
+    "In House",
+    "Retail",
+    "Declared"
+
+];
+
+
+/* =========================================================
+   MONDAY BANK LABEL DIFFERENCES
+========================================================= */
+
+const BANK_LABEL_MAP = {
+
+    "ALL BANK":
+        "ALLBANK",
+
+    "PENBANK":
+        "PEN BANK",
+
+    "BANK OF MAKATI":
+        "Bank Of Makati"
+
+};
+
+
+let checkCounter = 0;
+
+
+/* =========================================================
+   DROP ZONE
+========================================================= */
+
+const dropZone =
+    document.getElementById(
+        "dropZone"
+    );
+
+const fileInput =
+    document.getElementById(
+        "fileInput"
+    );
+
+
+dropZone.addEventListener(
+    "click",
+    () => fileInput.click()
+);
+
+
+fileInput.addEventListener(
+    "change",
+    event => {
+
+        const file =
+            event.target.files[0];
+
+        if (file) {
+            processSOAFile(file);
+        }
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "dragover",
+    event => {
+
+        event.preventDefault();
+
+        dropZone.classList.add(
+            "dragover"
+        );
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "dragleave",
+    () => {
+
+        dropZone.classList.remove(
+            "dragover"
+        );
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "drop",
+    event => {
+
+        event.preventDefault();
+
+        dropZone.classList.remove(
+            "dragover"
+        );
+
+
+        const file =
+            event.dataTransfer.files[0];
+
+
+        if (file) {
+            processSOAFile(file);
+        }
+
+    }
+);
+
+
+/* =========================================================
+   PROCESS SOA FILE
+========================================================= */
+
+async function processSOAFile(file) {
+
+    const ocrPanel =
+        document.getElementById(
+            "ocrPanel"
+        );
+
+    const ocrFileName =
+        document.getElementById(
+            "ocrFileName"
+        );
+
+    const ocrText =
+        document.getElementById(
+            "ocrText"
+        );
+
+    const progress =
+        document.getElementById(
+            "ocrProgressBar"
+        );
+
+    const result =
+        document.getElementById(
+            "ocrResult"
+        );
+
+
+    ocrPanel.style.display =
+        "block";
+
+    result.style.display =
+        "none";
+
+    progress.style.width =
+        "0%";
+
+    ocrFileName.textContent =
+        "File: " + file.name;
+
+
+    try {
+
+        let extractedText = "";
+
+
+        if (
+            file.type === "application/pdf" ||
+            file.name.toLowerCase().endsWith(".pdf")
+        ) {
+
+            extractedText =
+                await processPDF(
+                    file
+                );
+
+        }
+
+        else if (
+            file.type.startsWith(
+                "image/"
+            )
+        ) {
+
+            extractedText =
+                await runOCR(
+                    file,
+                    1,
+                    1
+                );
+
+        }
+
+        else {
+
+            throw new Error(
+                "Unsupported file type."
+            );
+
+        }
+
+
+        console.log(
+            "RAW OCR TEXT:",
+            extractedText
+        );
+
+
+        ocrText.textContent =
+            "Analyzing SOA...";
+
+
+        const soa =
+            parseSOA(
+                extractedText
+            );
+
+
+        console.log(
+            "PARSED SOA:",
+            soa
+        );
+
+
+        if (
+            soa.accountName
+        ) {
+
+            document
+                .getElementById(
+                    "accountName"
+                )
+                .value =
+                    soa.accountName;
+
+        }
+
+
+        if (
+            soa.checks.length === 0
+        ) {
+
+            throw new Error(
+                "No check rows could be detected. Review the document quality or OCR output."
+            );
+
+        }
+
+
+        populateImportedChecks(
+            soa.checks
+        );
+
+
+        progress.style.width =
+            "100%";
+
+
+        ocrText.textContent =
+            "SOA extraction completed.";
+
+
+        result.style.display =
+            "block";
+
+
+        result.innerHTML = `
+
+            <strong>
+                SOA Successfully Read
+            </strong>
+
+            <br><br>
+
+            Account Name:
+            ${escapeHTML(
+                soa.accountName ||
+                "Not detected"
+            )}
+
+            <br>
+
+            Checks Detected:
+            ${soa.checks.length}
+
+        `;
+
+    }
+
+    catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        ocrText.textContent =
+            "Extraction failed.";
+
+
+        result.style.display =
+            "block";
+
+        result.style.background =
+            "#fdebed";
+
+        result.style.border =
+            "1px solid #e6a0a7";
+
+        result.style.color =
+            "#922934";
+
+
+        result.innerHTML = `
+
+            <strong>
+                Unable to extract SOA
+            </strong>
+
+            <br><br>
+
+            ${escapeHTML(
+                error.message
+            )}
+
+        `;
+
+    }
+
+}
+
+
+/* =========================================================
+   PDF → IMAGE → OCR
+========================================================= */
+
+async function processPDF(file) {
+
+    const arrayBuffer =
+        await file.arrayBuffer();
+
+
+    const pdf =
+        await pdfjsLib
+            .getDocument({
+                data:
+                    arrayBuffer
+            })
+            .promise;
+
+
+    let combinedText =
+        "";
+
+
+    for (
+        let pageNumber = 1;
+        pageNumber <= pdf.numPages;
+        pageNumber++
+    ) {
+
+        document
+            .getElementById(
+                "ocrText"
+            )
+            .textContent =
+
+                "Rendering PDF page " +
+                pageNumber +
+                " of " +
+                pdf.numPages +
+                "...";
+
+
+        const page =
+            await pdf.getPage(
+                pageNumber
+            );
+
+
+        const viewport =
+            page.getViewport({
+                scale:
+                    2.4
+            });
+
+
+        const canvas =
+            document.createElement(
+                "canvas"
+            );
+
+
+        const context =
+            canvas.getContext(
+                "2d"
+            );
+
+
+        canvas.width =
+            viewport.width;
+
+        canvas.height =
+            viewport.height;
+
+
+        await page.render({
+
+            canvasContext:
+                context,
+
+            viewport:
+                viewport
+
+        }).promise;
+
+
+        const text =
+            await runOCR(
+                canvas,
+                pageNumber,
+                pdf.numPages
+            );
+
+
+        combinedText +=
+
+            "\n" +
+            text +
+            "\n";
+
+    }
+
+
+    return combinedText;
+}
+
+
+/* =========================================================
+   OCR
+========================================================= */
+
+async function runOCR(
+    source,
+    page,
+    totalPages
+) {
+
+    const progress =
+        document.getElementById(
+            "ocrProgressBar"
+        );
+
+
+    const result =
+        await Tesseract.recognize(
+
+            source,
+
+            "eng",
+
+            {
+
+                logger:
+                    message => {
+
+                        if (
+                            message.status ===
+                            "recognizing text"
+                        ) {
+
+                            const pageProgress =
+                                message.progress;
+
+
+                            const overall =
+                                (
+                                    (page - 1) +
+                                    pageProgress
+                                )
+                                /
+                                totalPages;
+
+
+                            progress.style.width =
+
+                                Math.round(
+                                    overall * 100
+                                )
+                                +
+                                "%";
+
+
+                            document
+                                .getElementById(
+                                    "ocrText"
+                                )
+                                .textContent =
+
+                                    "Reading page " +
+                                    page +
+                                    " of " +
+                                    totalPages +
+                                    " — " +
+                                    Math.round(
+                                        pageProgress *
+                                        100
+                                    ) +
+                                    "%";
+
+                        }
+
+                    }
+
+            }
+
+        );
+
+
+    return result.data.text;
+}
+
+
+/* =========================================================
+   PARSE SOA OCR TEXT
+========================================================= */
+
+function parseSOA(text) {
+
+    const cleanText =
+        text
+            .replace(/\r/g, "\n")
+            .replace(/[ \t]+/g, " ")
+            .replace(/\n+/g, "\n");
+
+
+    const flatText =
+        cleanText
+            .replace(/\n/g, " ")
+            .replace(/\s+/g, " ");
+
+
+    const accountName =
+        extractAccountName(
+            flatText
+        );
+
+
+    const checks =
+        extractCheckRows(
+            flatText
+        );
+
+
+    return {
+
+        accountName:
+            accountName,
+
+        checks:
+            checks
+
+    };
+}
+
+
+/* =========================================================
+   ACCOUNT NAME
+========================================================= */
+
+function extractAccountName(text) {
+
+    const patterns = [
+
+        /Name\s*:\s*(.+?)\s+Page\s*#/i,
+
+        /Name\s*:\s*(.+?)\s+Loan\s*Amount/i,
+
+        /Name\s+(.+?)\s+Page\s*#/i,
+
+        /Name\s+(.+?)\s+Loan\s*Amount/i
+
+    ];
+
+
+    for (const pattern of patterns) {
+
+        const match =
+            text.match(pattern);
+
+
+        if (
+            match &&
+            match[1]
+        ) {
+
+            return match[1]
+                .replace(/\s+/g, " ")
+                .replace(/PAGE\s*#.*$/i, "")
+                .trim()
+                .toUpperCase();
+
+        }
+
+    }
+
+
+    return "";
+}
+
+
+/* =========================================================
+   CHECK ROW EXTRACTION
+========================================================= */
+
+function extractCheckRows(text) {
+
+    const checks = [];
+
+    /*
+    Supports SOA rows such as:
+
+    11/05/2026 35,291.67 RCBC-IMUS 0009000501 7-591-59891-0
+
+    and:
+
+    11/19/2026 50,416.67 BDO-MAGALLANES VILLAGE 12 002020218840
+    */
+
+    const rowRegex =
+        /(\d{2}[\/\-]\d{2}[\/\-]\d{4})\s+([\d,]+\.\d{2})\s+(.+?)\s+(\d{1,16})\s+([0-9][0-9\-\s]{5,25})(?=\s+\d{2}[\/\-]\d{2}[\/\-]\d{4}|\s+Total|\s+TOTAL|\s+LOAN|\s*$)/g;
+
+    let match;
+
+    while (
+        (
+            match =
+                rowRegex.exec(text)
+        ) !== null
+    ) {
+
+        const rawDate =
+            match[1];
+
+        const rawAmount =
+            match[2];
+
+        const rawBankBranch =
+            match[3]
+                .trim();
+
+        const checkNo =
+            match[4]
+                .trim();
+
+        const accountNo =
+            match[5]
+                .trim();
+
+        const bankInfo =
+            parseBankAndBranch(
+                rawBankBranch
+            );
+
+        checks.push({
+
+            bank:
+                bankInfo.bank,
+
+            branch:
+                bankInfo.branch,
+
+            check_date:
+                convertDateToISO(
+                    rawDate
+                ),
+
+            check_amount:
+                parseMoney(
+                    rawAmount
+                ),
+
+            check_no:
+                checkNo,
+
+            account_no:
+                accountNo,
+
+            fund_source:
+                document
+                    .getElementById(
+                        "defaultFundSource"
+                    )
+                    .value
+
+        });
+
+    }
+
+    console.log(
+        "CHECK ROWS DETECTED:",
+        checks
+    );
+
+    return checks;
+}
+
+
+/* =========================================================
+   BANK / BRANCH PARSER
+========================================================= */
+
+function parseBankAndBranch(rawText) {
+
+    let text =
+        String(rawText)
+
+            .replace(
+                /\s+/g,
+                " "
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+    text =
+        text.replace(
+            /^[\s\-–—:]+|[\s\-–—:]+$/g,
+            ""
+        );
+
+
+    /*
+    RCBC
+    */
+
+    if (
+        /^RCBC[\s\-–—]/i.test(text)
+    ) {
+
+        return {
+
+            bank:
+                "RCBC",
+
+            branch:
+                text
+                    .replace(
+                        /^RCBC[\s\-–—]*/i,
+                        ""
+                    )
+                    .trim()
+
+        };
+
+    }
+
+
+    /*
+    BDO
+    */
+
+    if (
+        /^BDO[\s\-–—]/i.test(text)
+    ) {
+
+        return {
+
+            bank:
+                "BDO",
+
+            branch:
+                text
+                    .replace(
+                        /^BDO[\s\-–—]*/i,
+                        ""
+                    )
+                    .trim()
+
+        };
+
+    }
+
+
+    /*
+    METROBANK
+    */
+
+    if (
+        /^METROBANK/i.test(text)
+    ) {
+
+        return {
+
+            bank:
+                "MB",
+
+            branch:
+                text
+                    .replace(
+                        /^METROBANK[\s\-–—]*/i,
+                        ""
+                    )
+                    .trim()
+
+        };
+
+    }
+
+
+    /*
+    BPI
+    */
+
+    if (
+        /^BPI[\s\-–—]/i.test(text)
+    ) {
+
+        return {
+
+            bank:
+                "BPI",
+
+            branch:
+                text
+                    .replace(
+                        /^BPI[\s\-–—]*/i,
+                        ""
+                    )
+                    .trim()
+
+        };
+
+    }
+
+
+    /*
+    UNIONBANK
+    */
+
+    if (
+        /^UNION\s*BANK/i.test(text) ||
+        /^UNIONBANK/i.test(text)
+    ) {
+
+        return {
+
+            bank:
+                "UB",
+
+            branch:
+                text
+                    .replace(
+                        /^UNION\s*BANK[\s\-–—]*/i,
+                        ""
+                    )
+                    .replace(
+                        /^UNIONBANK[\s\-–—]*/i,
+                        ""
+                    )
+                    .trim()
+
+        };
+
+    }
+
+
+    /*
+    Generic bank matching
+    */
+
+    const sortedBanks =
+        [...BANKS]
+            .sort(
+                (a, b) =>
+                    b.length -
+                    a.length
+            );
+
+    for (
+        const bank of sortedBanks
+    ) {
+
+        const normalizedBank =
+            bank.toUpperCase();
+
+        if (
+            text.startsWith(
+                normalizedBank
+            )
+        ) {
+
+            return {
+
+                bank:
+                    bank,
+
+                branch:
+                    text
+                        .substring(
+                            normalizedBank.length
+                        )
+                        .replace(
+                            /^[\s\-–—]+/,
+                            ""
+                        )
+                        .trim()
+
+            };
+
+        }
+
+    }
+
+
+    return {
+
+        bank:
+            "",
+
+        branch:
+            text
+
+    };
+}
+
+
+/* =========================================================
+   BRANCH CLEANER
+========================================================= */
+
+function cleanBranch(
+    text,
+    bank
+) {
+
+    return text
+
+        .replace(
+            bank,
+            ""
+        )
+
+        .replace(
+            /^[\s\-–—]+/,
+            ""
+        )
+
+        .trim();
+}
+
+
+/* =========================================================
+   MONEY
+========================================================= */
+
+function parseMoney(value) {
+
+    return Number(
+
+        String(value)
+            .replace(
+                /,/g,
+                ""
+            )
+            .replace(
+                /[^\d.]/g,
+                ""
+            )
+
+    ) || 0;
+}
+
+
+/* =========================================================
+   DATE → YYYY-MM-DD
+========================================================= */
+
+function convertDateToISO(value) {
+
+    const cleaned =
+        value.replace(
+            /-/g,
+            "/"
+        );
+
+
+    const parts =
+        cleaned.split(
+            "/"
+        );
+
+
+    if (
+        parts.length !== 3
+    ) {
+
+        return "";
+
+    }
+
+
+    const month =
+        parts[0]
+            .padStart(
+                2,
+                "0"
+            );
+
+    const day =
+        parts[1]
+            .padStart(
+                2,
+                "0"
+            );
+
+    const year =
+        parts[2];
+
+
+    return (
+
+        year +
+        "-" +
+        month +
+        "-" +
+        day
+
+    );
+}
+
+
+/* =========================================================
+   POPULATE IMPORTED CHECKS
+========================================================= */
+
+function populateImportedChecks(
+    checks
+) {
+
+    const container =
+        document.getElementById(
+            "checksContainer"
+        );
+
+
+    container.innerHTML =
+        "";
+
+
+    checkCounter =
+        0;
+
+
+    checks.forEach(
+        check => {
+
+            addCheck(
+                check
+            );
+
+        }
+    );
+
+
+    updateSummary();
+}
+
+
+/* =========================================================
+   BANK OPTIONS
+========================================================= */
+
+function getBankOptions() {
+
+    let html = `
+
+        <option value="">
+            Select Bank
+        </option>
+
+    `;
+
+
+    BANKS.forEach(bank => {
+
+        html += `
+
+            <option value="${bank}">
+                ${bank}
+            </option>
+
+        `;
+
+    });
+
+
+    return html;
+}
+
+
+/* =========================================================
+   FUND SOURCE OPTIONS
+========================================================= */
+
+function getFundSourceOptions() {
+
+    let html = `
+
+        <option value="">
+            Select Fund Source
+        </option>
+
+    `;
+
+
+    FUND_SOURCES.forEach(source => {
+
+        html += `
+
+            <option value="${source}">
+                ${source}
+            </option>
+
+        `;
+
+    });
+
+
+    return html;
+}
+
+
+/* =========================================================
+   ADD CHECK
+
+   If called manually:
+   copies Bank, Branch, Amount and Fund Source from Check 1.
+
+   If called from OCR:
+   uses the provided prefill object.
+========================================================= */
+
+function addCheck(
+    prefill = null
+) {
+
+    checkCounter++;
+
+
+    let values = {
+
+        bank:
+            "",
+
+        branch:
+            "",
+
+        check_date:
+            "",
+
+        check_amount:
+            "",
+
+        check_no:
+            "",
+
+        fund_source:
+            ""
+
+    };
+
+
+    /*
+    OCR / imported values
+    */
+
+    if (
+        prefill &&
+        typeof prefill ===
+        "object"
+    ) {
+
+        values = {
+
+            ...values,
+            ...prefill
+
+        };
+
+    }
+
+    else {
+
+        /*
+        Manual Add Another Check:
+        copy Check 1 values.
+        */
+
+        const firstCard =
+            document.querySelector(
+                ".check-card"
+            );
+
+
+        if (
+            firstCard
+        ) {
+
+            values.bank =
+                firstCard
+                    .querySelector(
+                        ".bank"
+                    )
+                    .value;
+
+
+            values.branch =
+                firstCard
+                    .querySelector(
+                        ".branch"
+                    )
+                    .value;
+
+
+            values.check_amount =
+                firstCard
+                    .querySelector(
+                        ".check-amount"
+                    )
+                    .value;
+
+
+            values.fund_source =
+                firstCard
+                    .querySelector(
+                        ".fund-source"
+                    )
+                    .value;
+
+        }
+
+        else {
+
+            values.fund_source =
+                document
+                    .getElementById(
+                        "defaultFundSource"
+                    )
+                    .value;
+
+        }
+
+    }
+
+
+    const container =
+        document.getElementById(
+            "checksContainer"
+        );
+
+
+    const card =
+        document.createElement(
+            "div"
+        );
+
+
+    card.className =
+        "check-card";
+
+
+    card.innerHTML = `
+
+        <div class="check-header">
+
+            <div class="check-title">
+                Check
+            </div>
+
+            <button
+                type="button"
+                class="remove-btn"
+                onclick="removeCheck(this)"
+            >
+                Remove
+            </button>
+
+        </div>
+
+
+        <div class="check-content">
+
+            <div class="check-grid">
+
+
+                <div class="form-group">
+
+                    <label>
+                        Bank
+                        <span class="required">
+                            (required)
+                        </span>
+                    </label>
+
+                    <select class="bank">
+
+                        ${getBankOptions()}
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Branch
+                        <span class="required">
+                            (required)
+                        </span>
+                    </label>
+
+                    <input
+                        type="text"
+                        class="branch"
+                        value="${escapeAttribute(values.branch)}"
+                        placeholder="E.G BGC"
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Check Date
+                        <span class="required">
+                            (required)
+                        </span>
+                    </label>
+
+                    <input
+                        type="date"
+                        class="check-date"
+                        value="${escapeAttribute(values.check_date)}"
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Check Amount
+                        <span class="required">
+                            (required)
+                        </span>
+                    </label>
+
+                    <input
+                        type="number"
+                        class="check-amount"
+                        min="0.01"
+                        step="0.01"
+                        value="${escapeAttribute(values.check_amount)}"
+                        oninput="updateSummary()"
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Check No.
+                        <span class="required">
+                            (required)
+                        </span>
+                    </label>
+
+                    <input
+                        type="text"
+                        class="check-no"
+                        value="${escapeAttribute(values.check_no)}"
+                        placeholder="Enter Check Number"
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Fund Source
+                        <span class="required">
+                            (required)
+                        </span>
+                    </label>
+
+                    <select class="fund-source">
+
+                        ${getFundSourceOptions()}
+
+                    </select>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    container.appendChild(
+        card
+    );
+
+
+    card
+        .querySelector(
+            ".bank"
+        )
+        .value =
+            values.bank || "";
+
+
+    card
+        .querySelector(
+            ".fund-source"
+        )
+        .value =
+            values.fund_source ||
+            document
+                .getElementById(
+                    "defaultFundSource"
+                )
+                .value ||
+            "";
+
+
+    renumberChecks();
+
+    updateSummary();
+}
+
+
+/* =========================================================
+   APPLY DEFAULT FUND SOURCE
+========================================================= */
+
+function applyFundSourceToAll() {
+
+    const value =
+        document
+            .getElementById(
+                "defaultFundSource"
+            )
+            .value;
+
+
+    document
+        .querySelectorAll(
+            ".fund-source"
+        )
+        .forEach(
+            select => {
+
+                select.value =
+                    value;
+
+            }
+        );
+}
+
+
+/* =========================================================
+   REMOVE CHECK
+========================================================= */
+
+function removeCheck(button) {
+
+    const cards =
+        document.querySelectorAll(
+            ".check-card"
+        );
+
+
+    if (
+        cards.length <= 1
+    ) {
+
+        alert(
+            "At least one check is required."
+        );
+
+        return;
+    }
+
+
+    button
+        .closest(
+            ".check-card"
+        )
+        .remove();
+
+
+    renumberChecks();
+
+    updateSummary();
+}
+
+
+/* =========================================================
+   RENUMBER
+========================================================= */
+
+function renumberChecks() {
+
+    const cards =
+        document.querySelectorAll(
+            ".check-card"
+        );
+
+
+    cards.forEach(
+        (card,index) => {
+
+            card
+                .querySelector(
+                    ".check-title"
+                )
+                .textContent =
+
+                    "Check " +
+                    (index + 1);
+
+        }
+    );
+
+
+    document
+        .getElementById(
+            "checkCounterText"
+        )
+        .textContent =
+
+            cards.length +
+            " Check(s)";
+}
+
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+
+function updateSummary() {
+
+    const cards =
+        document.querySelectorAll(
+            ".check-card"
+        );
+
+
+    let total =
+        0;
+
+
+    cards.forEach(
+        card => {
+
+            total +=
+
+                Number(
+
+                    card
+                        .querySelector(
+                            ".check-amount"
+                        )
+                        .value
+
+                ) || 0;
+
+        }
+    );
+
+
+    document
+        .getElementById(
+            "totalChecks"
+        )
+        .textContent =
+            cards.length;
+
+
+    document
+        .getElementById(
+            "checkCounterText"
+        )
+        .textContent =
+
+            cards.length +
+            " Check(s)";
+
+
+    document
+        .getElementById(
+            "totalAmount"
+        )
+        .textContent =
+
+            total.toLocaleString(
+                "en-PH",
+                {
+                    style:
+                        "currency",
+
+                    currency:
+                        "PHP"
+                }
+            );
+}
+
+
+/* =========================================================
+   VALIDATE
+========================================================= */
+
+function validateForm() {
+
+    const accountName =
+        document
+            .getElementById(
+                "accountName"
+            )
+            .value
+            .trim();
+
+
+    if (
+        !accountName
+    ) {
+
+        alert(
+            "Please enter the Account Name."
+        );
+
+        return false;
+    }
+
+
+    const cards =
+        document.querySelectorAll(
+            ".check-card"
+        );
+
+
+    const duplicates =
+        new Set();
+
+
+    for (
+        let i = 0;
+        i < cards.length;
+        i++
+    ) {
+
+        const card =
+            cards[i];
+
+
+        const bank =
+            card
+                .querySelector(
+                    ".bank"
+                )
+                .value;
+
+
+        const branch =
+            card
+                .querySelector(
+                    ".branch"
+                )
+                .value
+                .trim();
+
+
+        const date =
+            card
+                .querySelector(
+                    ".check-date"
+                )
+                .value;
+
+
+        const amount =
+            card
+                .querySelector(
+                    ".check-amount"
+                )
+                .value;
+
+
+        const checkNo =
+            card
+                .querySelector(
+                    ".check-no"
+                )
+                .value
+                .trim();
+
+
+        const fundSource =
+            card
+                .querySelector(
+                    ".fund-source"
+                )
+                .value;
+
+
+        if (
+            !bank ||
+            !branch ||
+            !date ||
+            !amount ||
+            !checkNo ||
+            !fundSource
+        ) {
+
+            alert(
+
+                "Please complete all fields for Check " +
+                (i + 1) +
+                "."
+
+            );
+
+            return false;
+        }
+
+
+        const key =
+
+            bank
+                .toUpperCase()
+
+            +
+            "|"
+
+            +
+            checkNo
+                .toUpperCase();
+
+
+        if (
+            duplicates.has(
+                key
+            )
+        ) {
+
+            alert(
+
+                "Duplicate check: " +
+                bank +
+                " / " +
+                checkNo
+
+            );
+
+            return false;
+        }
+
+
+        duplicates.add(
+            key
+        );
+
+    }
+
+
+    return true;
+}
+
+
+/* =========================================================
+   GET CHECKS
+========================================================= */
+
+function getChecks() {
+
+    return [
+
+        ...document.querySelectorAll(
+            ".check-card"
+        )
+
+    ].map(
+        card => ({
+
+            bank:
+                card
+                    .querySelector(
+                        ".bank"
+                    )
+                    .value,
+
+            branch:
+                card
+                    .querySelector(
+                        ".branch"
+                    )
+                    .value
+                    .trim(),
+
+            check_date:
+                card
+                    .querySelector(
+                        ".check-date"
+                    )
+                    .value,
+
+            check_amount:
+                Number(
+                    card
+                        .querySelector(
+                            ".check-amount"
+                        )
+                        .value
+                ),
+
+            check_no:
+                card
+                    .querySelector(
+                        ".check-no"
+                    )
+                    .value
+                    .trim(),
+
+            fund_source:
+                card
+                    .querySelector(
+                        ".fund-source"
+                    )
+                    .value
+
+        })
+    );
+}
+
+
+/* =========================================================
+   CREATE MONDAY ITEM
+========================================================= */
+
+async function createMondayItem(
+    accountName,
+    check
+) {
+
+    const targetGroup =
+        FUND_SOURCE_GROUPS[
+            check.fund_source
+        ];
+
+
+    if (
+        !targetGroup
+    ) {
+
+        throw new Error(
+
+            "No group mapping for " +
+            check.fund_source
+
+        );
+    }
+
+
+    const mondayBankLabel =
+
+        BANK_LABEL_MAP[
+            check.bank
+        ]
+
+        ||
+
+        check.bank;
+
+
+    const columnValues = {};
+
+
+    columnValues[
+        COLUMN_IDS.BANK
+    ] = {
+
+        label:
+            mondayBankLabel
+
+    };
+
+
+    columnValues[
+        COLUMN_IDS.BRANCH
+    ] =
+        check.branch;
+
+
+    columnValues[
+        COLUMN_IDS.CHECK_DATE
+    ] = {
+
+        date:
+            check.check_date
+
+    };
+
+
+    columnValues[
+        COLUMN_IDS.CHECK_AMOUNT
+    ] =
+        check.check_amount;
+
+
+    columnValues[
+        COLUMN_IDS.CHECK_NO
+    ] =
+        check.check_no;
+
+
+    columnValues[
+        COLUMN_IDS.FUND_SOURCE
+    ] = {
+
+        label:
+            check.fund_source
+
+    };
+
+
+    const query = `
+
+        mutation CreateCheck(
+            $boardId: ID!,
+            $groupId: String!,
+            $itemName: String!,
+            $columnValues: JSON!
+        ) {
+
+            create_item(
+                board_id: $boardId,
+                group_id: $groupId,
+                item_name: $itemName,
+                column_values: $columnValues
+            ) {
+
+                id
+                name
+
+            }
+
+        }
+
+    `;
+
+
+    const variables = {
+
+        boardId:
+            BOARD_ID,
+
+        groupId:
+            targetGroup,
+
+        itemName:
+            accountName,
+
+        columnValues:
+            JSON.stringify(
+                columnValues
+            )
+
+    };
+
+
+    const response =
+        await fetch(
+            MONDAY_API,
+            {
+
+                method:
+                    "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "application/json",
+
+                    "Authorization":
+                        MONDAY_TOKEN,
+
+                    "API-Version":
+                        "2026-07"
+
+                },
+
+                body:
+                    JSON.stringify({
+
+                        query:
+                            query,
+
+                        variables:
+                            variables
+
+                    })
+
+            }
+        );
+
+
+    const result =
+        await response.json();
+
+
+    if (
+        result.errors &&
+        result.errors.length
+    ) {
+
+        throw new Error(
+
+            result.errors
+                .map(
+                    error =>
+                        error.message
+                )
+                .join(
+                    " | "
+                )
+
+        );
+    }
+
+
+    return result
+        .data
+        .create_item;
+}
+
+
+/* =========================================================
+   SUBMIT ALL
+========================================================= */
+
+async function submitAllChecks() {
+
+    if (
+        !validateForm()
+    ) {
+
+        return;
+    }
+
+
+    const accountName =
+        document
+            .getElementById(
+                "accountName"
+            )
+            .value
+            .trim();
+
+
+    const checks =
+        getChecks();
+
+
+    const submit =
+        document.getElementById(
+            "submitButton"
+        );
+
+
+    const progressArea =
+        document.getElementById(
+            "progressArea"
+        );
+
+
+    const progress =
+        document.getElementById(
+            "progressBar"
+        );
+
+
+    const progressText =
+        document.getElementById(
+            "progressText"
+        );
+
+
+    const resultBox =
+        document.getElementById(
+            "resultBox"
+        );
+
+
+    submit.disabled =
+        true;
+
+
+    submit.textContent =
+        "CREATING CHECKS...";
+
+
+    progressArea.style.display =
+        "block";
+
+
+    progress.style.width =
+        "0%";
+
+
+    resultBox.style.display =
+        "none";
+
+
+    let successful =
+        0;
+
+
+    const failed =
+        [];
+
+
+    for (
+        let i = 0;
+        i < checks.length;
+        i++
+    ) {
+
+        const check =
+            checks[i];
+
+
+        progressText.textContent =
+
+            "Creating Check " +
+            (i + 1) +
+            " of " +
+            checks.length +
+            " — " +
+            check.check_no;
+
+
+        try {
+
+            await createMondayItem(
+                accountName,
+                check
+            );
+
+
+            successful++;
+
+        }
+
+        catch (error) {
+
+            failed.push({
+
+                check_no:
+                    check.check_no,
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+
+        progress.style.width =
+
+            Math.round(
+
+                (
+                    (i + 1) /
+                    checks.length
+                )
+
+                * 100
+
+            )
+            +
+            "%";
+
+    }
+
+
+    resultBox.style.display =
+        "block";
+
+
+    if (
+        failed.length === 0
+    ) {
+
+        resultBox.className =
+            "success";
+
+
+        resultBox.innerHTML = `
+
+            <strong>
+                All Checks Created Successfully
+            </strong>
+
+            <br><br>
+
+            Account:
+            ${escapeHTML(accountName)}
+
+            <br>
+
+            Checks Created:
+            ${successful}
+
+        `;
+
+    }
+
+    else {
+
+        resultBox.className =
+            "error";
+
+
+        let html =
+            "";
+
+
+        failed.forEach(
+            item => {
+
+                html += `
+
+                    <div>
+                        ${escapeHTML(
+                            item.check_no
+                        )}
+                        —
+                        ${escapeHTML(
+                            item.error
+                        )}
+                    </div>
+
+                `;
+
+            }
+        );
+
+
+        resultBox.innerHTML = `
+
+            <strong>
+                Batch Completed With Errors
+            </strong>
+
+            <br><br>
+
+            Successful:
+            ${successful}
+
+            <br>
+
+            Failed:
+            ${failed.length}
+
+            <br><br>
+
+            ${html}
+
+        `;
+
+    }
+
+
+    progressText.textContent =
+        "Finished.";
+
+
+    submit.disabled =
+        false;
+
+
+    submit.textContent =
+        "CREATE CHECKS IN MONDAY";
+}
+
+
+/* =========================================================
+   SAFE HTML
+========================================================= */
+
+function escapeHTML(value) {
+
+    return String(
+        value ?? ""
+    )
+
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+}
+
+
+function escapeAttribute(value) {
+
+    return escapeHTML(
+        value
+    );
+}
+
+
+/* =========================================================
+   START WITH ONE EMPTY CHECK
+========================================================= */
+
+addCheck({});
+
+</script>
+
+</body>
+</html>
