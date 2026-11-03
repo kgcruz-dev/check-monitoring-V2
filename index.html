@@ -1092,19 +1092,14 @@ async function processPDF(file) {
     const arrayBuffer =
         await file.arrayBuffer();
 
-
     const pdf =
         await pdfjsLib
             .getDocument({
-                data:
-                    arrayBuffer
+                data: arrayBuffer
             })
             .promise;
 
-
-    let combinedText =
-        "";
-
+    let nativeText = "";
 
     for (
         let pageNumber = 1;
@@ -1113,77 +1108,137 @@ async function processPDF(file) {
     ) {
 
         document
-            .getElementById(
-                "ocrText"
-            )
+            .getElementById("ocrText")
             .textContent =
+                "Reading PDF page " +
+                pageNumber +
+                " of " +
+                pdf.numPages +
+                "...";
 
+        const page =
+            await pdf.getPage(pageNumber);
+
+        const textContent =
+            await page.getTextContent();
+
+        const items =
+            textContent.items
+                .filter(item => item.str && item.str.trim())
+                .map(item => ({
+                    text: item.str.trim(),
+                    x: item.transform[4],
+                    y: item.transform[5]
+                }));
+
+        const rows = [];
+        const tolerance = 3;
+
+        items
+            .sort((a, b) => {
+                if (Math.abs(a.y - b.y) > tolerance) {
+                    return b.y - a.y;
+                }
+                return a.x - b.x;
+            })
+            .forEach(item => {
+                let row = rows.find(
+                    current =>
+                        Math.abs(current.y - item.y) <= tolerance
+                );
+
+                if (!row) {
+                    row = { y: item.y, items: [] };
+                    rows.push(row);
+                }
+
+                row.items.push(item);
+            });
+
+        rows.sort((a, b) => b.y - a.y);
+
+        const pageText =
+            rows
+                .map(row =>
+                    row.items
+                        .sort((a, b) => a.x - b.x)
+                        .map(item => item.text)
+                        .join(" ")
+                )
+                .join("\n");
+
+        nativeText += "\n" + pageText + "\n";
+    }
+
+    if (
+        nativeText.trim().length > 100 &&
+        /CHECK\s+DETAILS/i.test(nativeText)
+    ) {
+
+        console.log(
+            "USING NATIVE PDF TEXT:",
+            nativeText
+        );
+
+        document
+            .getElementById("ocrProgressBar")
+            .style.width = "100%";
+
+        return nativeText;
+    }
+
+    console.log(
+        "No usable native PDF text. Falling back to OCR."
+    );
+
+    let combinedText = "";
+
+    for (
+        let pageNumber = 1;
+        pageNumber <= pdf.numPages;
+        pageNumber++
+    ) {
+
+        document
+            .getElementById("ocrText")
+            .textContent =
                 "Rendering PDF page " +
                 pageNumber +
                 " of " +
                 pdf.numPages +
                 "...";
 
-
         const page =
-            await pdf.getPage(
-                pageNumber
-            );
-
+            await pdf.getPage(pageNumber);
 
         const viewport =
             page.getViewport({
-                scale:
-                    2.4
+                scale: 2.5
             });
 
-
         const canvas =
-            document.createElement(
-                "canvas"
-            );
-
+            document.createElement("canvas");
 
         const context =
-            canvas.getContext(
-                "2d"
-            );
+            canvas.getContext("2d");
 
-
-        canvas.width =
-            viewport.width;
-
-        canvas.height =
-            viewport.height;
-
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
 
         await page.render({
-
-            canvasContext:
-                context,
-
-            viewport:
-                viewport
-
+            canvasContext: context,
+            viewport: viewport
         }).promise;
 
-
-        const text =
+        const pageText =
             await runOCR(
                 canvas,
                 pageNumber,
                 pdf.numPages
             );
 
-
-        combinedText +=
-
-            "\n" +
-            text +
-            "\n";
-
+        combinedText += "\n" + pageText + "\n";
     }
-
 
     return combinedText;
 }
@@ -1281,38 +1336,27 @@ async function runOCR(
 function parseSOA(text) {
 
     const cleanText =
-        text
+        String(text)
             .replace(/\r/g, "\n")
             .replace(/[ \t]+/g, " ")
-            .replace(/\n+/g, "\n");
-
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
 
     const flatText =
         cleanText
             .replace(/\n/g, " ")
-            .replace(/\s+/g, " ");
-
+            .replace(/\s+/g, " ")
+            .trim();
 
     const accountName =
-        extractAccountName(
-            flatText
-        );
-
+        extractAccountName(flatText);
 
     const checks =
-        extractCheckRows(
-            flatText
-        );
-
+        extractCheckRows(cleanText);
 
     return {
-
-        accountName:
-            accountName,
-
-        checks:
-            checks
-
+        accountName: accountName,
+        checks: checks
     };
 }
 
@@ -1370,84 +1414,108 @@ function extractCheckRows(text) {
 
     const checks = [];
 
-    /*
-    Supports SOA rows such as:
+    const normalizedLines =
+        String(text)
+            .replace(/\r/g, "\n")
+            .split("\n")
+            .map(line =>
+                line
+                    .replace(/\s+/g, " ")
+                    .trim()
+            )
+            .filter(Boolean);
 
-    11/05/2026 35,291.67 RCBC-IMUS 0009000501 7-591-59891-0
+    const mainRowRegex =
+        /^(\d{2}[\/\-]\d{2}[\/\-]\d{4})\s+([\d,]+\.\d{2})\s+(.+?)\s+(\d{1,16})\s+([0-9][0-9\-]{5,25})$/;
 
-    and:
-
-    11/19/2026 50,416.67 BDO-MAGALLANES VILLAGE 12 002020218840
-    */
-
-    const rowRegex =
-        /(\d{2}[\/\-]\d{2}[\/\-]\d{4})\s+([\d,]+\.\d{2})\s+(.+?)\s+(\d{1,16})\s+([0-9][0-9\-\s]{5,25})(?=\s+\d{2}[\/\-]\d{2}[\/\-]\d{4}|\s+Total|\s+TOTAL|\s+LOAN|\s*$)/g;
-
-    let match;
-
-    while (
-        (
-            match =
-                rowRegex.exec(text)
-        ) !== null
+    for (
+        let i = 0;
+        i < normalizedLines.length;
+        i++
     ) {
 
-        const rawDate =
-            match[1];
+        const line = normalizedLines[i];
+        const match = line.match(mainRowRegex);
 
-        const rawAmount =
-            match[2];
+        if (!match) {
+            continue;
+        }
 
-        const rawBankBranch =
-            match[3]
-                .trim();
+        const rawDate = match[1];
+        const rawAmount = match[2];
+        let rawBankBranch = match[3].trim();
+        const checkNo = match[4].trim();
+        const accountNo = match[5].trim();
 
-        const checkNo =
-            match[4]
-                .trim();
+        const nextLine =
+            normalizedLines[i + 1] || "";
 
-        const accountNo =
-            match[5]
-                .trim();
+        if (
+            rawBankBranch.endsWith("-") &&
+            nextLine &&
+            !/^\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(nextLine) &&
+            !/^(TOTAL|LOAN|CHECK|DATE|AMOUNT|BANK|ACCOUNT)/i.test(nextLine)
+        ) {
+            rawBankBranch += " " + nextLine;
+            i++;
+        }
 
         const bankInfo =
-            parseBankAndBranch(
-                rawBankBranch
-            );
+            parseBankAndBranch(rawBankBranch);
 
         checks.push({
-
-            bank:
-                bankInfo.bank,
-
-            branch:
-                bankInfo.branch,
-
-            check_date:
-                convertDateToISO(
-                    rawDate
-                ),
-
-            check_amount:
-                parseMoney(
-                    rawAmount
-                ),
-
-            check_no:
-                checkNo,
-
-            account_no:
-                accountNo,
-
+            bank: bankInfo.bank,
+            branch: bankInfo.branch,
+            check_date: convertDateToISO(rawDate),
+            check_amount: parseMoney(rawAmount),
+            check_no: checkNo,
+            account_no: accountNo,
             fund_source:
                 document
-                    .getElementById(
-                        "defaultFundSource"
-                    )
+                    .getElementById("defaultFundSource")
                     .value
-
         });
+    }
 
+    if (checks.length === 0) {
+
+        const flatText =
+            normalizedLines.join(" ");
+
+        const rowRegex =
+            /(\d{2}[\/\-]\d{2}[\/\-]\d{4})\s+([\d,]+\.\d{2})\s+(.+?)\s+(\d{1,16})\s+([0-9][0-9\-]{5,25})(?=\s+\d{2}[\/\-]\d{2}[\/\-]\d{4}|\s+Total|\s+TOTAL|\s+LOAN|\s*$)/g;
+
+        let match;
+
+        while (
+            (
+                match =
+                    rowRegex.exec(flatText)
+            ) !== null
+        ) {
+
+            const rawDate = match[1];
+            const rawAmount = match[2];
+            const rawBankBranch = match[3].trim();
+            const checkNo = match[4].trim();
+            const accountNo = match[5].trim();
+
+            const bankInfo =
+                parseBankAndBranch(rawBankBranch);
+
+            checks.push({
+                bank: bankInfo.bank,
+                branch: bankInfo.branch,
+                check_date: convertDateToISO(rawDate),
+                check_amount: parseMoney(rawAmount),
+                check_no: checkNo,
+                account_no: accountNo,
+                fund_source:
+                    document
+                        .getElementById("defaultFundSource")
+                        .value
+            });
+        }
     }
 
     console.log(
@@ -1467,14 +1535,8 @@ function parseBankAndBranch(rawText) {
 
     let text =
         String(rawText)
-
-            .replace(
-                /\s+/g,
-                " "
-            )
-
+            .replace(/\s+/g, " ")
             .trim()
-
             .toUpperCase();
 
     text =
@@ -1483,157 +1545,79 @@ function parseBankAndBranch(rawText) {
             ""
         );
 
-
-    /*
-    RCBC
-    */
-
-    if (
-        /^RCBC[\s\-–—]/i.test(text)
-    ) {
-
+    if (/^CBC[\s\-–—]/i.test(text)) {
         return {
-
-            bank:
-                "RCBC",
-
+            bank: "CB",
             branch:
                 text
-                    .replace(
-                        /^RCBC[\s\-–—]*/i,
-                        ""
-                    )
+                    .replace(/^CBC[\s\-–—]*/i, "")
+                    .replace(/\s*-\s*/g, " - ")
                     .trim()
-
         };
-
     }
 
-
-    /*
-    BDO
-    */
-
-    if (
-        /^BDO[\s\-–—]/i.test(text)
-    ) {
-
+    if (/^RCBC[\s\-–—]/i.test(text)) {
         return {
-
-            bank:
-                "BDO",
-
+            bank: "RCBC",
             branch:
                 text
-                    .replace(
-                        /^BDO[\s\-–—]*/i,
-                        ""
-                    )
+                    .replace(/^RCBC[\s\-–—]*/i, "")
                     .trim()
-
         };
-
     }
 
-
-    /*
-    METROBANK
-    */
-
-    if (
-        /^METROBANK/i.test(text)
-    ) {
-
+    if (/^BDO[\s\-–—]/i.test(text)) {
         return {
-
-            bank:
-                "MB",
-
+            bank: "BDO",
             branch:
                 text
-                    .replace(
-                        /^METROBANK[\s\-–—]*/i,
-                        ""
-                    )
+                    .replace(/^BDO[\s\-–—]*/i, "")
                     .trim()
-
         };
-
     }
 
-
-    /*
-    BPI
-    */
-
-    if (
-        /^BPI[\s\-–—]/i.test(text)
-    ) {
-
+    if (/^METROBANK/i.test(text)) {
         return {
-
-            bank:
-                "BPI",
-
+            bank: "MB",
             branch:
                 text
-                    .replace(
-                        /^BPI[\s\-–—]*/i,
-                        ""
-                    )
+                    .replace(/^METROBANK[\s\-–—]*/i, "")
                     .trim()
-
         };
-
     }
 
-
-    /*
-    UNIONBANK
-    */
+    if (/^BPI[\s\-–—]/i.test(text)) {
+        return {
+            bank: "BPI",
+            branch:
+                text
+                    .replace(/^BPI[\s\-–—]*/i, "")
+                    .trim()
+        };
+    }
 
     if (
         /^UNION\s*BANK/i.test(text) ||
         /^UNIONBANK/i.test(text)
     ) {
-
         return {
-
-            bank:
-                "UB",
-
+            bank: "UB",
             branch:
                 text
-                    .replace(
-                        /^UNION\s*BANK[\s\-–—]*/i,
-                        ""
-                    )
-                    .replace(
-                        /^UNIONBANK[\s\-–—]*/i,
-                        ""
-                    )
+                    .replace(/^UNION\s*BANK[\s\-–—]*/i, "")
+                    .replace(/^UNIONBANK[\s\-–—]*/i, "")
                     .trim()
-
         };
-
     }
-
-
-    /*
-    Generic bank matching
-    */
 
     const sortedBanks =
         [...BANKS]
             .sort(
                 (a, b) =>
-                    b.length -
-                    a.length
+                    b.length - a.length
             );
 
-    for (
-        const bank of sortedBanks
-    ) {
+    for (const bank of sortedBanks) {
 
         const normalizedBank =
             bank.toUpperCase();
@@ -1643,38 +1627,22 @@ function parseBankAndBranch(rawText) {
                 normalizedBank
             )
         ) {
-
             return {
-
-                bank:
-                    bank,
-
+                bank: bank,
                 branch:
                     text
                         .substring(
                             normalizedBank.length
                         )
-                        .replace(
-                            /^[\s\-–—]+/,
-                            ""
-                        )
+                        .replace(/^[\s\-–—]+/, "")
                         .trim()
-
             };
-
         }
-
     }
 
-
     return {
-
-        bank:
-            "",
-
-        branch:
-            text
-
+        bank: "",
+        branch: text
     };
 }
 
